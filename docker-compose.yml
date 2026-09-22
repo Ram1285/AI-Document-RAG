@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://rag_user:rag_password@postgres:5432/rag_db
+    volumes:
+      - ./data:/app/data
+      - ./vector_store:/app/vector_store
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rag_db
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

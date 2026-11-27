@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f6f7f9" />
+  <title>DocuChat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202a36;
+      --muted: #728093;
+      --line: #e3e8ee;
+      --paper: #ffffff;
+      --canvas: #f6f7f9;
+      --accent: #326b59;
+      --accent-dark: #285646;
+      --soft-green: #edf5f0;
+      --danger: #a64040;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--ink);
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(100% - 36px, 720px); margin: 0 auto; padding: 58px 0 72px; }
+    .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 42px; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+      color: white; background: var(--accent); font-size: 19px; font-weight: 700;
+    }
+    .brand-name { font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+    h1 { margin: 0; font-size: clamp(28px, 5vw, 38px); line-height: 1.2; letter-spacing: -.04em; font-weight: 650; }
+    .intro { margin: 10px 0 27px; color: var(--muted); font-size: 16px; }
+    .panel { padding: 23px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 4px 18px #25364a08; }
+    .section-label { display: block; margin-bottom: 12px; color: #485667; font-size: 13px; font-weight: 650; }
+    .upload-row { display: flex; align-items: center; gap: 12px; }
+    .file-picker { min-width: 0; flex: 1; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: white; font: inherit; }
+    input[type="file"]::file-selector-button { margin-right: 12px; padding: 7px 10px; border: 0; border-radius: 6px; background: #f0f2f4; color: var(--ink); font: inherit; cursor: pointer; }
+    button { border: 0; border-radius: 9px; padding: 11px 16px; background: var(--accent); color: white; font: inherit; font-weight: 600; cursor: pointer; transition: background .15s, opacity .15s; }
+    button:hover:not(:disabled) { background: var(--accent-dark); }
+    button:disabled { opacity: .55; cursor: wait; }
+    .hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    .notice { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+    .notice.show { display: block; }
+    .notice.error { color: var(--danger); background: #fbefef; }
+    .notice.success { color: var(--accent-dark); background: var(--soft-green); }
+    #document-card { display: none; align-items: center; justify-content: space-between; gap: 16px; margin-top: 14px; padding: 14px 15px; border: 1px solid #dce9e0; border-radius: 11px; background: var(--soft-green); }
+    #document-card.visible { display: flex; }
+    .doc-name { overflow: hidden; color: #29493b; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-meta { margin-top: 2px; color: #668071; font-size: 12px; }
+    .ready { flex: 0 0 auto; color: var(--accent-dark); font-size: 12px; font-weight: 650; }
+    .divider { height: 1px; margin: 25px 0; background: var(--line); }
+    #ask-section { opacity: .48; transition: opacity .2s; }
+    #ask-section.enabled { opacity: 1; }
+    .question-row { display: flex; align-items: end; gap: 10px; }
+    textarea { display: block; width: 100%; min-height: 48px; max-height: 150px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: 9px; outline: none; color: var(--ink); background: white; font: inherit; }
+    textarea:focus, .file-picker:focus-visible { border-color: #78a391; box-shadow: 0 0 0 3px #326b5915; }
+    #answer-card { display: none; margin-top: 18px; padding: 17px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfd; }
+    #answer-card.visible { display: block; }
+    .answer-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    #answer { white-space: pre-wrap; }
+    details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+    summary { color: #566577; font-size: 13px; cursor: pointer; }
+    .source { margin-top: 10px; padding: 11px; border-left: 2px solid #9ab7a7; background: white; color: #596778; font-size: 13px; white-space: pre-wrap; }
+    footer { margin-top: 18px; color: #8a96a5; text-align: center; font-size: 12px; }
+    @media (max-width: 560px) {
+      main { padding-top: 32px; }
+      .brand { margin-bottom: 32px; }
+      .panel { padding: 17px; }
+      .upload-row { align-items: stretch; flex-direction: column; }
+      .question-row { align-items: stretch; flex-direction: column; }
+      .question-row button { align-self: flex-end; }
+      #document-card { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="brand" aria-label="DocuChat home">
+      <div class="brand-mark" aria-hidden="true">D</div>
+      <div class="brand-name">DocuChat</div>
+    </header>
+
+    <h1>Ask your document</h1>
+    <p class="intro">Upload a file, then get answers grounded in its contents.</p>
+
+    <section class="panel" aria-label="Document upload and questions">
+      <form id="upload-form">
+        <label class="section-label" for="file-input">Your document</label>
+        <div class="upload-row">
+          <input class="file-picker" id="file-input" name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+          <button id="upload-button" type="submit">Upload document</button>
+        </div>
+        <p class="hint">PDF or DOCX · Up to 10 MB</p>
+      </form>
+      <div id="upload-notice" class="notice" role="status" aria-live="polite"></div>
+      <div id="document-card" aria-live="polite">
+        <div style="min-width:0">
+          <div id="doc-name" class="doc-name"></div>
+          <div id="doc-meta" class="doc-meta"></div>
+        </div>
+        <div class="ready">Ready to ask</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <form id="ask-section">
+        <label class="section-label" for="question-input">Ask a question</label>
+        <div class="question-row">
+          <textarea id="question-input" placeholder="What is this document about?" minlength="3" required disabled></textarea>
+          <button id="ask-button" type="submit" disabled>Ask</button>
+        </div>
+      </form>
+      <div id="answer-card" aria-live="polite">
+        <div class="answer-label">Answer</div>
+        <div id="answer"></div>
+        <details id="sources-details">
+          <summary id="sources-summary">Sources</summary>
+          <div id="sources"></div>
+        </details>
+      </div>
+      <div id="query-notice" class="notice" role="status" aria-live="polite"></div>
+    </section>
+    <footer>Your files stay in this app's configured storage.</footer>
+  </main>
+
+  <script>
+    const uploadForm = document.getElementById('upload-form');
+    const fileInput = document.getElementById('file-input');
+    const uploadButton = document.getElementById('upload-button');
+    const uploadNotice = document.getElementById('upload-notice');
+    const documentCard = document.getElementById('document-card');
+    const askForm = document.getElementById('ask-section');
+    const questionInput = document.getElementById('question-input');
+    const askButton = document.getElementById('ask-button');
+    const answerCard = document.getElementById('answer-card');
+    let activeDocumentId = null;
+
+    function showNotice(element, message, type) {
+      element.textContent = message;
+      element.className = `notice show ${type}`;
+    }
+
+    async function readError(response) {
+      try {
+        const body = await response.json();
+        return body.detail || body.message || JSON.stringify(body);
+      } catch {
+        return `Request failed (${response.status}).`;
+      }
+    }
+
+    uploadForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!fileInput.files.length) return;
+      uploadButton.disabled = true;
+      uploadButton.textContent = 'Processing…';
+      uploadNotice.className = 'notice';
+      documentCard.classList.remove('visible');
+      askForm.classList.remove('enabled');
+      answerCard.classList.remove('visible');
+      activeDocumentId = null;
+
+      try {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        const response = await fetch('/documents/upload?process=true', { method: 'POST', body: formData });
+        if (!response.ok) throw new Error(await readError(response));
+        const result = await response.json();
+        const doc = result.document;
+        activeDocumentId = doc.id;
+        document.getElementById('doc-name').textContent = doc.original_filename;
+        document.getElementById('doc-meta').textContent = `${doc.page_count} page${doc.page_count === 1 ? '' : 's'} · ${doc.chunk_count} text sections`;
+        documentCard.classList.add('visible');
+        askForm.classList.add('enabled');
+        questionInput.disabled = false;
+        askButton.disabled = false;
+        questionInput.focus();
+        showNotice(uploadNotice, 'Your document is uploaded and ready.', 'success');
+      } catch (error) {
+        showNotice(uploadNotice, error.message || 'Could not upload this document.', 'error');
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = 'Upload document';
+      }
+    });
+
+    askForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const question = questionInput.value.trim();
+      if (!question || !activeDocumentId) return;
+      askButton.disabled = true;
+      askButton.textContent = 'Thinking…';
+      document.getElementById('query-notice').className = 'notice';
+      answerCard.classList.remove('visible');
+
+      try {
+        const response = await fetch('/rag/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, document_id: activeDocumentId, top_k: 4 })
+        });
+        if (!response.ok) throw new Error(await readError(response));
+        const result = await response.json();
+        document.getElementById('answer').textContent = result.answer;
+        const sources = document.getElementById('sources');
+        sources.replaceChildren();
+        result.sources.forEach((source, index) => {
+          const item = document.createElement('div');
+          item.className = 'source';
+          const page = source.page_number ? ` · page ${source.page_number}` : '';
+          item.textContent = `${index + 1}${page}\n${source.text}`;
+          sources.appendChild(item);
+        });
+        document.getElementById('sources-summary').textContent = `Sources (${result.sources.length})`;
+        document.getElementById('sources-details').open = false;
+        answerCard.classList.add('visible');
+      } catch (error) {
+        showNotice(document.getElementById('query-notice'), error.message || 'Could not get an answer.', 'error');
+      } finally {
+        askButton.disabled = false;
+        askButton.textContent = 'Ask';
+      }
+    });
+  </script>
+</body>
+</html>

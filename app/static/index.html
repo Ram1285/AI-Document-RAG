@@ -61,11 +61,31 @@
     textarea:focus, .file-picker:focus-visible { border-color: #78a391; box-shadow: 0 0 0 3px #326b5915; }
     #answer-card { display: none; margin-top: 18px; padding: 17px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfd; }
     #answer-card.visible { display: block; }
-    .answer-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    #answer { white-space: pre-wrap; }
-    details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+    .answer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .answer-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .copy-button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; background: white; color: #566577; font-size: 12px; font-weight: 600; }
+    .copy-button:hover:not(:disabled) { border-color: #b9c6d2; background: #f3f5f7; color: var(--ink); }
+    #answer { color: var(--ink); }
+    #answer p { margin: 0 0 12px; }
+    #answer p:last-child { margin-bottom: 0; }
+    #answer h3, #answer h4, #answer h5 { margin: 18px 0 8px; color: #2b3a47; line-height: 1.3; letter-spacing: -.01em; }
+    #answer h3 { font-size: 17px; }
+    #answer h4 { font-size: 15.5px; }
+    #answer h5 { font-size: 14.5px; }
+    #answer h3:first-child, #answer h4:first-child, #answer h5:first-child { margin-top: 0; }
+    #answer ul, #answer ol { margin: 0 0 12px; padding-left: 21px; }
+    #answer li { margin: 6px 0; padding-left: 2px; }
+    #answer li::marker { color: var(--accent); font-weight: 650; }
+    #answer strong { color: #22303d; font-weight: 650; }
+    #answer code { padding: 1px 5px; border-radius: 4px; background: #edf0f3; color: #33475a; font-size: 13px; }
+    #answer .cite { display: inline-block; margin-left: 2px; color: var(--accent-dark); font-size: 11px; font-weight: 650; vertical-align: super; }
+    details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
     summary { color: #566577; font-size: 13px; cursor: pointer; }
-    .source { margin-top: 10px; padding: 11px; border-left: 2px solid #9ab7a7; background: white; color: #596778; font-size: 13px; white-space: pre-wrap; }
+    .source { margin-top: 10px; padding: 11px 12px; border-left: 2px solid #9ab7a7; border-radius: 0 8px 8px 0; background: white; color: #596778; font-size: 13px; }
+    .source-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 6px; }
+    .source-title { overflow: hidden; max-width: 100%; color: #33475a; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .source-meta { flex: 0 0 auto; color: #7b8a9a; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+    .source-text { line-height: 1.5; white-space: pre-wrap; }
     footer { margin-top: 18px; color: #8a96a5; text-align: center; font-size: 12px; }
     @media (max-width: 560px) {
       main { padding-top: 32px; }
@@ -116,7 +136,10 @@
         </div>
       </form>
       <div id="answer-card" aria-live="polite">
-        <div class="answer-label">Answer</div>
+        <div class="answer-head">
+          <div class="answer-label">Answer</div>
+          <button type="button" class="copy-button" id="copy-answer">Copy</button>
+        </div>
         <div id="answer"></div>
         <details id="sources-details">
           <summary id="sources-summary">Sources</summary>
@@ -138,7 +161,91 @@
     const questionInput = document.getElementById('question-input');
     const askButton = document.getElementById('ask-button');
     const answerCard = document.getElementById('answer-card');
+    const copyButton = document.getElementById('copy-answer');
     let activeDocumentId = null;
+    let lastAnswer = '';
+
+    function escapeHtml(text) {
+      const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return text.replace(/[&<>"']/g, (character) => entities[character]);
+    }
+
+    function renderInline(text) {
+      return escapeHtml(text)
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[(\d+)\]/g, '<span class="cite">[$1]</span>');
+    }
+
+    function renderMarkdown(markdown) {
+      const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+      const html = [];
+      let list = null;
+      let paragraph = [];
+
+      function closeList() {
+        if (list) {
+          html.push(`</${list}>`);
+          list = null;
+        }
+      }
+
+      function flushParagraph() {
+        if (paragraph.length) {
+          html.push(`<p>${renderInline(paragraph.join(' '))}</p>`);
+          paragraph = [];
+        }
+      }
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          flushParagraph();
+          closeList();
+          continue;
+        }
+
+        const heading = line.match(/^(#{1,3})\s+(.*)$/);
+        if (heading) {
+          flushParagraph();
+          closeList();
+          const tag = heading[1].length === 1 ? 'h3' : heading[1].length === 2 ? 'h4' : 'h5';
+          html.push(`<${tag}>${renderInline(heading[2])}</${tag}>`);
+          continue;
+        }
+
+        const bullet = line.match(/^[-*•]\s+(.*)$/);
+        if (bullet) {
+          flushParagraph();
+          if (list !== 'ul') {
+            closeList();
+            html.push('<ul>');
+            list = 'ul';
+          }
+          html.push(`<li>${renderInline(bullet[1])}</li>`);
+          continue;
+        }
+
+        const numbered = line.match(/^\d+[.)]\s+(.*)$/);
+        if (numbered) {
+          flushParagraph();
+          if (list !== 'ol') {
+            closeList();
+            html.push('<ol>');
+            list = 'ol';
+          }
+          html.push(`<li>${renderInline(numbered[1])}</li>`);
+          continue;
+        }
+
+        if (list) closeList();
+        paragraph.push(line);
+      }
+
+      flushParagraph();
+      closeList();
+      return html.join('');
+    }
 
     function showNotice(element, message, type) {
       element.textContent = message;
@@ -153,6 +260,17 @@
         return `Request failed (${response.status}).`;
       }
     }
+
+    copyButton.addEventListener('click', async () => {
+      if (!lastAnswer) return;
+      try {
+        await navigator.clipboard.writeText(lastAnswer);
+        copyButton.textContent = 'Copied';
+        setTimeout(() => { copyButton.textContent = 'Copy'; }, 1600);
+      } catch {
+        copyButton.textContent = 'Copy failed';
+      }
+    });
 
     uploadForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -206,18 +324,41 @@
         });
         if (!response.ok) throw new Error(await readError(response));
         const result = await response.json();
-        document.getElementById('answer').textContent = result.answer;
+        lastAnswer = result.answer;
+        document.getElementById('answer').innerHTML = renderMarkdown(result.answer);
         const sources = document.getElementById('sources');
         sources.replaceChildren();
         result.sources.forEach((source, index) => {
           const item = document.createElement('div');
           item.className = 'source';
-          const page = source.page_number ? ` · page ${source.page_number}` : '';
-          item.textContent = `${index + 1}${page}\n${source.text}`;
+
+          const head = document.createElement('div');
+          head.className = 'source-head';
+          const title = document.createElement('span');
+          title.className = 'source-title';
+          title.textContent = `${index + 1}. ${source.filename}`;
+
+          const meta = document.createElement('span');
+          meta.className = 'source-meta';
+          const details = [];
+          if (source.page_number) details.push(`page ${source.page_number}`);
+          if (typeof source.score === 'number') {
+            details.push(`${Math.round(Math.max(0, Math.min(1, source.score)) * 100)}% match`);
+          }
+          meta.textContent = details.join(' · ');
+
+          const text = document.createElement('div');
+          text.className = 'source-text';
+          text.textContent = source.text;
+
+          head.append(title, meta);
+          item.append(head, text);
           sources.appendChild(item);
         });
         document.getElementById('sources-summary').textContent = `Sources (${result.sources.length})`;
+        document.getElementById('sources-details').style.display = result.sources.length ? 'block' : 'none';
         document.getElementById('sources-details').open = false;
+        copyButton.textContent = 'Copy';
         answerCard.classList.add('visible');
       } catch (error) {
         showNotice(document.getElementById('query-notice'), error.message || 'Could not get an answer.', 'error');

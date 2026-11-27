@@ -65,7 +65,10 @@ async def answer_question(
 ) -> dict:
     sources = semantic_search(db, query=question, top_k=top_k, document_id=document_id)
     context = "\n\n".join(
-        f"Source {index + 1} (page {source['page_number']}):\n{source['text']}"
+        (
+            f"Source {index + 1} (page {source['page_number'] or 'n/a'}, "
+            f"file: {source['filename']}):\n{source['text']}"
+        )
         for index, source in enumerate(sources)
     )
     answer = await generate_answer(question, context)

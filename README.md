@@ -2,7 +2,7 @@
 
 A minimal, resume-worthy AI document processing and Retrieval-Augmented Generation platform.
 
-The project demonstrates a practical retrieval-augmented generation pipeline: document text extraction, BAAI BGE embeddings, FAISS semantic retrieval, and local Ollama answer generation.
+The project demonstrates a practical retrieval-augmented generation pipeline: document text extraction, E5 embeddings, FAISS semantic retrieval, and local Ollama answer generation.
 
 ## Features
 
@@ -11,7 +11,7 @@ The project demonstrates a practical retrieval-augmented generation pipeline: do
 - Optionally upload files to AWS S3 when `AWS_S3_BUCKET` is configured.
 - Extract clean text from PDFs with PyMuPDF and DOCX files with python-docx.
 - Split extracted text into overlapping chunks.
-- Generate embeddings with BAAI BGE (`BAAI/bge-small-en-v1.5`) through Sentence Transformers.
+- Generate embeddings with E5 (`intfloat/e5-small-v2`) through Sentence Transformers.
 - Store vectors in FAISS.
 - Store document and chunk metadata in SQLAlchemy models.
 - Use SQLite locally or PostgreSQL/RDS in cloud deployment.
@@ -31,7 +31,7 @@ User / Swagger UI
   -> Local storage or AWS S3
   -> Text extraction
   -> Chunking
-  -> BAAI BGE embeddings
+  -> E5 embeddings
   -> FAISS vector store
   -> RAG pipeline
   -> Ollama local model (primary)
@@ -65,10 +65,16 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Run the API:
+Run the API from Bash:
+
+```bash
+bash run.sh
+```
+
+Or from PowerShell:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.\run.ps1
 ```
 
 Open:
@@ -114,7 +120,7 @@ Important values:
 
 ```text
 DATABASE_URL=sqlite:///./data/app.db
-EMBEDDING_MODEL_NAME=BAAI/bge-small-en-v1.5
+EMBEDDING_MODEL_NAME=intfloat/e5-small-v2
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2:1b
 OPENAI_API_KEY=
@@ -124,7 +130,7 @@ AWS_REGION=
 AWS_S3_BUCKET=
 ```
 
-The embedding model is `BAAI/bge-small-en-v1.5`; the app adds BGE's recommended retrieval instruction to short questions but not document chunks. The first use downloads the model. Existing chunks are automatically re-embedded into a separate model-specific FAISS index the next time a question is asked or a document is processed.
+The embedding model is `intfloat/e5-small-v2`. The app prefixes questions with `query:` and document chunks with `passage:` as required for E5 retrieval. The first use downloads the model. Existing chunks are automatically re-embedded into a separate model-specific FAISS index the next time a question is asked or a document is processed.
 
 Ollama is the primary answer model and runs locally. The default `llama3.2:1b` is a smaller, faster option; change `OLLAMA_MODEL` to `llama3.2` for the larger 3B model. The app keeps Ollama loaded for 30 minutes and limits answer generation to 192 tokens. If Ollama is unavailable, GPT-4o is used only when `OPENAI_API_KEY` is configured; that fallback sends the question and retrieved document text to OpenAI and may incur API charges. If no key is configured or GPT-4o also fails, the app selects relevant sentences locally from the retrieved chunks.
 
@@ -190,4 +196,4 @@ Minimal cloud mapping:
 
 ## Resume Description
 
-Built an AI document Q&A RAG platform with Python, BAAI BGE embeddings, FAISS vector search, and local Ollama generation. Implemented PDF/DOCX extraction, overlapping chunking, semantic retrieval, source-grounded answers, and optional GPT-4o fallback.
+Built an AI document Q&A RAG platform with Python, E5 embeddings, FAISS vector search, and local Ollama generation. Implemented PDF/DOCX extraction, overlapping chunking, semantic retrieval, source-grounded answers, and optional GPT-4o fallback.

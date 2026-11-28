@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     processed_dir: Path = Path("data/processed")
     vector_store_dir: Path = Path("vector_store")
     max_upload_size_mb: int = 10
-    embedding_model_name: str = "BAAI/bge-small-en-v1.5"
+    embedding_model_name: str = "intfloat/e5-small-v2"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:1b"
     app_api_key: str | None = None

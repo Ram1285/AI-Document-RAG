@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 10
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2"
+    ollama_model: str = "llama3.2:1b"
     app_api_key: str | None = None
     database_url: str = "sqlite:///./data/app.db"
     openai_api_key: str | None = None

@@ -28,7 +28,13 @@ async def generate_answer(question: str, context: str) -> str:
         response = await _post_chat(
             f"{settings.ollama_base_url.rstrip('/')}/api/chat",
             timeout=120,
-            json={"model": settings.ollama_model, "messages": messages, "stream": False},
+            json={
+                "model": settings.ollama_model,
+                "messages": messages,
+                "stream": False,
+                "keep_alive": "30m",
+                "options": {"num_predict": 192},
+            },
         )
         response.raise_for_status()
         answer = response.json()["message"]["content"].strip()

@@ -84,7 +84,7 @@ http://127.0.0.1:8000/docs
 Install and start [Ollama](https://ollama.com/download), then download the default local model:
 
 ```powershell
-ollama pull llama3.2
+ollama pull llama3.2:1b
 ```
 
 Keep Ollama running while using the app. It calls the local Ollama server first.
@@ -119,7 +119,7 @@ Important values:
 DATABASE_URL=sqlite:///./data/app.db
 EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=llama3.2:1b
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o
 APP_API_KEY=
@@ -127,7 +127,7 @@ AWS_REGION=
 AWS_S3_BUCKET=
 ```
 
-Ollama is the primary answer model and runs locally. If Ollama is unavailable, GPT-4o is used only when `OPENAI_API_KEY` is configured; that fallback sends the question and retrieved document text to OpenAI and may incur API charges. If no key is configured or GPT-4o also fails, the app selects relevant sentences locally from the retrieved chunks.
+Ollama is the primary answer model and runs locally. The default `llama3.2:1b` is a smaller, faster option; change `OLLAMA_MODEL` to `llama3.2` for the larger 3B model. The app keeps Ollama loaded for 30 minutes and limits answer generation to 192 tokens. If Ollama is unavailable, GPT-4o is used only when `OPENAI_API_KEY` is configured; that fallback sends the question and retrieved document text to OpenAI and may incur API charges. If no key is configured or GPT-4o also fails, the app selects relevant sentences locally from the retrieved chunks.
 
 If `APP_API_KEY` is set, call protected endpoints with:
 

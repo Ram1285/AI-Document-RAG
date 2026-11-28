@@ -15,7 +15,8 @@ The project demonstrates AI/ML and cloud engineering without unnecessary complex
 - Store vectors in FAISS.
 - Store document and chunk metadata in SQLAlchemy models.
 - Use SQLite locally or PostgreSQL/RDS in cloud deployment.
-- Ask questions using semantic retrieval plus an LLM.
+- Generate answers with a local Ollama model by default, with optional GPT-4o fallback.
+- Use local extractive answers if both language model providers are unavailable.
 - Search semantically across documents.
 - Summarize documents.
 - Return source chunks with page references when available.
@@ -33,7 +34,9 @@ User / Swagger UI
   -> Sentence Transformer embeddings
   -> FAISS vector store
   -> RAG pipeline
-  -> OpenAI-compatible LLM or local fallback
+  -> Ollama local model (primary)
+  -> Optional GPT-4o fallback
+  -> Local extractive fallback
   -> Answer with source references
 ```
 
@@ -78,6 +81,14 @@ http://127.0.0.1:8000
 http://127.0.0.1:8000/docs
 ```
 
+Install and start [Ollama](https://ollama.com/download), then download the default local model:
+
+```powershell
+ollama pull llama3.2
+```
+
+Keep Ollama running while using the app. It calls the local Ollama server first.
+
 ## API Endpoints
 
 - `GET /health`: health check.
@@ -107,13 +118,16 @@ Important values:
 ```text
 DATABASE_URL=sqlite:///./data/app.db
 EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o
 APP_API_KEY=
 AWS_REGION=
 AWS_S3_BUCKET=
 ```
 
-If `OPENAI_API_KEY` is empty, the app uses a simple local extractive fallback answer so the project still works for demos.
+Ollama is the primary answer model and runs locally. If Ollama is unavailable, GPT-4o is used only when `OPENAI_API_KEY` is configured; that fallback sends the question and retrieved document text to OpenAI and may incur API charges. If no key is configured or GPT-4o also fails, the app selects relevant sentences locally from the retrieved chunks.
 
 If `APP_API_KEY` is set, call protected endpoints with:
 
@@ -132,7 +146,7 @@ Current tests cover:
 - Upload validation.
 - Local file saving.
 - Chunking with page references.
-- LLM fallback behavior.
+- Local extractive answer behavior.
 
 ## Docker
 
@@ -202,7 +216,7 @@ Minimal cloud mapping:
 
 ## Resume Description
 
-Built a Dockerized AI document processing and RAG platform using Python, FastAPI, PyMuPDF, Sentence Transformers, FAISS, SQLAlchemy, PostgreSQL, AWS S3, EC2, RDS, ECR, CloudWatch, and GitHub Actions. Implemented PDF/DOCX upload, text extraction, chunking, embeddings, semantic search, question answering, summarization, and source/page citations.
+Built a Dockerized AI document processing and RAG platform using Python, FastAPI, PyMuPDF, Sentence Transformers, FAISS, Ollama, SQLAlchemy, PostgreSQL, AWS, and GitHub Actions. Implemented document extraction, chunking, semantic retrieval, local LLM answers, optional GPT-4o fallback, and source citations.
 
 ## Interview Guide
 

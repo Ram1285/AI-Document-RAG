@@ -14,11 +14,13 @@ class Settings(BaseSettings):
     vector_store_dir: Path = Path("vector_store")
     max_upload_size_mb: int = 10
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    llm_model: str = "gpt-4o-mini"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
     app_api_key: str | None = None
     database_url: str = "sqlite:///./data/app.db"
     openai_api_key: str | None = None
     openai_api_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = "gpt-4o"
     aws_region: str | None = None
     aws_s3_bucket: str | None = None
 

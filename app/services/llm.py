@@ -1,4 +1,5 @@
 import re
+import logging
 
 import httpx
 
@@ -6,41 +7,65 @@ from app.core.config import get_settings
 
 _SOURCE_HEADER = re.compile(r"Source\s+(\d+)\s*(?:\([^)]*\))?\s*:\s*", re.IGNORECASE)
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
+logger = logging.getLogger(__name__)
+
+_SYSTEM_PROMPT = (
+    "You are a careful document assistant. Answer only using the provided document context. "
+    "If the answer is not in the context, say you do not know. Cite supporting source numbers "
+    "in square brackets, for example [1]. Keep the answer clear and concise."
+)
 
 
 async def generate_answer(question: str, context: str) -> str:
     settings = get_settings()
-    if not settings.openai_api_key:
-        return _fallback_answer(question, context)
+    messages = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+    ]
 
-    url = f"{settings.openai_api_base_url.rstrip('/')}/chat/completions"
-    headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
-    payload = {
-        "model": settings.llm_model,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a careful document assistant. Answer only using the provided "
-                    "document context. Cite supporting source numbers in square brackets, "
-                    "for example [1]. If the answer is not in the context, say so plainly.\n\n"
-                    "Format every answer for easy scanning:\n"
-                    "- Start with one clear, direct sentence.\n"
-                    "- Follow with 2-5 short bullet points for the key details.\n"
-                    "- Use **bold** for important terms and keep sentences concise.\n"
-                    "- Do not repeat the question or invent information."
-                ),
-            },
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
-        ],
-        "temperature": 0.2,
-    }
-
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(url, headers=headers, json=payload)
+    # Ollama is the primary provider and runs on the user's machine.
+    try:
+        response = await _post_chat(
+            f"{settings.ollama_base_url.rstrip('/')}/api/chat",
+            timeout=120,
+            json={"model": settings.ollama_model, "messages": messages, "stream": False},
+        )
         response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
+        answer = response.json()["message"]["content"].strip()
+        if answer:
+            return answer
+        raise ValueError("Ollama returned an empty answer")
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+        logger.warning("Ollama answer generation failed; trying configured fallback: %s", exc)
+
+    # GPT-4o is optional and only called when an API key is explicitly configured.
+    if settings.openai_api_key:
+        try:
+            response = await _post_chat(
+                f"{settings.openai_api_base_url.rstrip('/')}/chat/completions",
+                timeout=60,
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                json={"model": settings.openai_model, "messages": messages, "temperature": 0.2},
+            )
+            response.raise_for_status()
+            answer = response.json()["choices"][0]["message"]["content"].strip()
+            if answer:
+                return answer
+            raise ValueError("GPT-4o returned an empty answer")
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+            logger.warning("GPT-4o answer generation failed; using local extractive fallback: %s", exc)
+
+    return _fallback_answer(question, context)
+
+
+async def _post_chat(
+    url: str,
+    timeout: float,
+    json: dict,
+    headers: dict | None = None,
+) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        return await client.post(url, json=json, headers=headers)
 
 
 def _fallback_answer(question: str, context: str) -> str:

@@ -11,7 +11,12 @@ flowchart LR
     EM --> FAISS[(FAISS Vector Store)]
     API --> RAG[RAG Pipeline]
     RAG --> FAISS
-    RAG --> LLM[OpenAI-compatible LLM]
+    RAG --> OL[Ollama local model]
+    OL --> RAG
+    RAG -. if Ollama unavailable and key configured .-> GPT[GPT-4o fallback]
+    GPT --> RAG
+    RAG -. if model calls fail .-> EA[Local extractive fallback]
+    EA --> RAG
     RAG --> API
     API --> U
 ```

@@ -6,7 +6,7 @@ Built a Dockerized AI document processing and RAG platform using FastAPI, PyMuPD
 
 ## How to explain it
 
-The user uploads a PDF or DOCX. The API stores the file locally during development and can also upload it to S3 in cloud mode. The app extracts text, splits it into overlapping chunks, generates sentence-transformer embeddings, and stores vectors in FAISS. Metadata such as document ID, filename, chunk text, and page number is stored in PostgreSQL. When a user asks a question, the query is embedded, FAISS retrieves top matching chunks, the context is sent to an LLM, and the API returns an answer with sources.
+The user uploads a PDF or DOCX. The app extracts text, splits it into overlapping chunks, embeds those chunks with Sentence Transformers, and indexes them in FAISS. For a question, it retrieves relevant chunks and sends them as context to the local Ollama model. If Ollama is unavailable, GPT-4o is an optional secondary provider when an API key is configured. If neither model can answer, a local keyword-based extractor selects sentences from the retrieved text.
 
 ## Possible interview questions
 
@@ -16,8 +16,8 @@ The user uploads a PDF or DOCX. The API stores the file locally during developme
 2. Why store metadata in PostgreSQL?
    FAISS stores vectors efficiently, but PostgreSQL is better for structured metadata, document status, filenames, chunk text, and audit records.
 
-3. How do you avoid hallucinations?
-   The prompt instructs the LLM to answer only from retrieved context, and the response includes source chunks so users can verify the answer.
+3. How do you keep answers grounded?
+   The system gives the answer model only the retrieved document context and asks it to answer from that context. The response also includes source chunks for verification; if both models are unavailable, a local extractor returns sentences directly from those chunks.
 
 4. How would you scale it?
    Move files to S3, metadata to RDS, run the API container on EC2 or ECS, use background workers for heavy ingestion, and eventually use a managed vector database.

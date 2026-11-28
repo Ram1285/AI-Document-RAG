@@ -15,6 +15,10 @@ class FaissVectorStore:
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self._load()
 
+    @property
+    def size(self) -> int:
+        return self.index.ntotal if self.index is not None else 0
+
     def add(self, vectors: np.ndarray, metadata: list[dict]) -> None:
         if vectors.size == 0:
             return

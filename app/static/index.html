@@ -134,6 +134,7 @@
           <textarea id="question-input" placeholder="What is this document about?" minlength="3" required disabled></textarea>
           <button id="ask-button" type="submit" disabled>Ask</button>
         </div>
+        <p class="hint">Press Enter to ask · Shift+Enter for a new line</p>
       </form>
       <div id="answer-card" aria-live="polite">
         <div class="answer-head">
@@ -270,6 +271,12 @@
       } catch {
         copyButton.textContent = 'Copy failed';
       }
+    });
+
+    questionInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+      event.preventDefault();
+      if (!askButton.disabled) askForm.requestSubmit();
     });
 
     uploadForm.addEventListener('submit', async (event) => {
